@@ -1,6 +1,6 @@
 {
   "name": "wifi-file-sharer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": false,
   "description": "A simple way to share files over WiFi using a robust web interface.",
   "author": "Isaias Fernandez",
