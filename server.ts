@@ -33,9 +33,22 @@ export async function startServer(options: { port: number; hostname: string }) {
   setupSocket(io);
   (global as any).io = io;
 
-  // Create temporary upload directory if it doesn't exist
+  // Create temporary upload directory if it doesn't exist and clean it
   const uploadDir = path.join(process.cwd(), "wifi-sharer-uploads");
-  if (!fs.existsSync(uploadDir)) {
+  if (fs.existsSync(uploadDir)) {
+    // Cleanup old files on startup
+    const files = fs.readdirSync(uploadDir);
+    for (const file of files) {
+      try {
+        const filePath = path.join(uploadDir, file);
+        if (fs.statSync(filePath).isFile()) {
+          fs.unlinkSync(filePath);
+        }
+      } catch (err) {
+        console.error(`Error cleaning up file ${file}:`, err);
+      }
+    }
+  } else {
     fs.mkdirSync(uploadDir, { recursive: true });
   }
 
