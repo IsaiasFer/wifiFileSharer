@@ -50,7 +50,8 @@ const socket_1 = require("./lib/socket");
 const rooms_1 = require("./lib/rooms");
 const dev = process.env.NODE_ENV !== "production";
 async function startServer(options) {
-    const { port, hostname } = options;
+    let { port } = options;
+    const { hostname } = options;
     // Ensure we find the Next.js app directory correctly
     // In dev (server.ts), it's the current dir. In prod (dist/server.js), it's one level up.
     const isDist = __dirname.endsWith("dist");
@@ -177,7 +178,12 @@ async function startServer(options) {
         const parsedUrl = (0, url_1.parse)(req.url, true);
         handle(req, res, parsedUrl);
     });
-    httpServer.listen(port, hostname, async () => {
+    const tryListen = (currentPort) => {
+        httpServer.listen(currentPort, hostname);
+    };
+    httpServer.on("listening", async () => {
+        const address = httpServer.address();
+        const actualPort = typeof address === "string" ? port : address?.port || port;
         // Get local IP address using native 'os' module
         const networkInterfaces = os_1.default.networkInterfaces();
         let localIp = "localhost";
@@ -185,7 +191,6 @@ async function startServer(options) {
             const interfaces = networkInterfaces[interfaceName];
             if (interfaces) {
                 for (const iface of interfaces) {
-                    // Skip internal (loopback) and non-IPv4 addresses
                     if (iface.family === "IPv4" && !iface.internal) {
                         localIp = iface.address;
                         break;
@@ -195,10 +200,10 @@ async function startServer(options) {
             if (localIp !== "localhost")
                 break;
         }
-        const url = `http://localhost:${port}`;
+        const url = `http://localhost:${actualPort}`;
         console.log(`\n🚀 Wifi File Sharer is running!`);
         console.log(`📡 Local:   ${url}`);
-        console.log(`🌐 Network: http://${localIp}:${port}\n`);
+        console.log(`🌐 Network: http://${localIp}:${actualPort}\n`);
         if (!dev) {
             const open = (await Promise.resolve().then(() => __importStar(require("open")))).default;
             try {
@@ -209,6 +214,20 @@ async function startServer(options) {
             }
         }
     });
+    httpServer.on("error", (err) => {
+        if (err.code === "EADDRINUSE") {
+            const nextPort = httpServer.address()?.port || port + 1;
+            // Note: we can't get address if it failed to bind, so we just increment our tracked port
+            console.log(`⚠️  Puerto ocupado, probando con ${port + 1}...`);
+            port++;
+            tryListen(port);
+        }
+        else {
+            console.error("Fallo crítico al iniciar el servidor:", err);
+            process.exit(1);
+        }
+    });
+    tryListen(port);
 }
 // Start if run directly
 if (require.main === module) {
