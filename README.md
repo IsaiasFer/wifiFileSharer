@@ -8,7 +8,7 @@
 
 ## 🇺🇸 English
 
-**WiFi LAN Link** is a modern, ultra-fast web application designed to share files and messages in real-time between devices connected to the same local network (WiFi or Ethernet). No complicated configurations, no internet required, and total privacy.
+**WiFi LAN Link** is a modern, ultra-fast web application designed to share files and messages in real-time between devices connected to the same local network (WiFi or Ethernet). No complicated configurations, no internet required, and no login.
 
 Created by [Isaias Fernandez](https://github.com/isaiasfer).
 
@@ -80,7 +80,7 @@ Fast, "one-and-done" file or text sharing in an office or home environment where
 
 ## 🇲🇽 Español
 
-**WiFi LAN Link** es una aplicación web moderna y ultrarrápida diseñada para compartir archivos y mensajes en tiempo real entre dispositivos conectados a la misma red local (WiFi o Ethernet). Sin configuraciones complicadas, sin necesidad de internet y con total privacidad.
+**WiFi LAN Link** es una aplicación web moderna y ultrarrápida diseñada para compartir archivos y mensajes en tiempo real entre dispositivos conectados a la misma red local (WiFi o Ethernet). Sin configuraciones complicadas, sin necesidad de internet y sin inicio de sesión.
 
 Creado por [Isaias Fernandez](https://github.com/isaiasfer).
 
