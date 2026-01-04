@@ -42,7 +42,7 @@ const url_1 = require("url");
 const next_1 = __importDefault(require("next"));
 const express_1 = __importDefault(require("express"));
 const socket_io_1 = require("socket.io");
-const ip_1 = __importDefault(require("ip"));
+const os_1 = __importDefault(require("os"));
 const formidable_1 = __importDefault(require("formidable"));
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
@@ -163,7 +163,23 @@ async function startServer(options) {
         handle(req, res, parsedUrl);
     });
     httpServer.listen(port, hostname, async () => {
-        const localIp = ip_1.default.address();
+        // Get local IP address using native 'os' module
+        const networkInterfaces = os_1.default.networkInterfaces();
+        let localIp = "localhost";
+        for (const interfaceName in networkInterfaces) {
+            const interfaces = networkInterfaces[interfaceName];
+            if (interfaces) {
+                for (const iface of interfaces) {
+                    // Skip internal (loopback) and non-IPv4 addresses
+                    if (iface.family === "IPv4" && !iface.internal) {
+                        localIp = iface.address;
+                        break;
+                    }
+                }
+            }
+            if (localIp !== "localhost")
+                break;
+        }
         const url = `http://localhost:${port}`;
         console.log(`\n🚀 Wifi File Sharer is running!`);
         console.log(`📡 Local:   ${url}`);

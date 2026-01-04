@@ -3,7 +3,7 @@ import { parse } from "url";
 import next from "next";
 import express, { Request, Response } from "express";
 import { Server } from "socket.io";
-import ip from "ip";
+import os from "os";
 import formidable from "formidable";
 import fs from "fs";
 import path from "path";
@@ -153,7 +153,24 @@ export async function startServer(options: { port: number; hostname: string }) {
   });
 
   httpServer.listen(port, hostname, async () => {
-    const localIp = ip.address();
+    // Get local IP address using native 'os' module
+    const networkInterfaces = os.networkInterfaces();
+    let localIp = "localhost";
+
+    for (const interfaceName in networkInterfaces) {
+      const interfaces = networkInterfaces[interfaceName];
+      if (interfaces) {
+        for (const iface of interfaces) {
+          // Skip internal (loopback) and non-IPv4 addresses
+          if (iface.family === "IPv4" && !iface.internal) {
+            localIp = iface.address;
+            break;
+          }
+        }
+      }
+      if (localIp !== "localhost") break;
+    }
+
     const url = `http://localhost:${port}`;
     console.log(`\n🚀 Wifi File Sharer is running!`);
     console.log(`📡 Local:   ${url}`);
