@@ -45,6 +45,11 @@ The command accepts parameters for custom execution:
 wifi-file-sharer --port 4000 --host 0.0.0.0
 ```
 
+| Flag | Description | Default |
+|------|-------------|---------|
+| `-p, --port` | Port to run the server on. If busy, it will try the next available (+1). | `3000` |
+| `-h, --host` | Host/IP to bind the server to. Use `0.0.0.0` for all interfaces. | `0.0.0.0` |
+
 #### How to access from other devices
 1. The server will display your local IP in the terminal, e.g., `http://192.168.1.15:3000`.
 2. Type that address into the browser of your mobile, tablet, or another PC.
@@ -112,6 +117,11 @@ El comando acepta parámetros para personalizar la ejecución:
 wifi-file-sharer --port 4000 --host 0.0.0.0
 ```
 
+| Parámetro | Descripción | Predeterminado |
+|-----------|-------------|----------------|
+| `-p, --port` | Puerto donde correrá el servidor. Si está ocupado, buscará el siguiente (+1). | `3000` |
+| `-h, --host` | Dirección IP a la que se vinculará. Usa `0.0.0.0` para todas. | `0.0.0.0` |
+
 #### Cómo acceder desde otros dispositivos
 1. El servidor te indicará tu IP local en la terminal, por ejemplo: `http://192.168.1.15:3000`.
 2. Escribe esa dirección en el navegador de tu móvil, tablet u otro PC.
@@ -135,6 +145,15 @@ Sí. Los archivos se borran cuando el host cierra la sala. Además, cualquier ar
 
 **¿Cuál es el caso de uso ideal?**
 Intercambio rápido de archivos o texto en entornos de oficina o casa donde quieres evitar la fricción de iniciar sesión en WhatsApp, Drive o Slack solo para pasar un archivo puntual.
+
+---
+
+### ☕ Support the Project / Donaciones
+
+If this tool helped you, consider supporting its development! / ¡Si esta herramienta te sirvió, considera apoyar su desarrollo!
+
+- **PayPal**: [paypal.me/isaiasfer4](https://paypal.me/isaiasfer4)
+- **Mercado Pago (Argentina)**: [link.mercadopago.com.ar/isaiasfer4](https://link.mercadopago.com.ar/isaiasfer4)
 
 ---
 
