@@ -51,8 +51,10 @@ const rooms_1 = require("./lib/rooms");
 const dev = process.env.NODE_ENV !== "production";
 async function startServer(options) {
     const { port, hostname } = options;
-    // When running from 'dist/server.js', the app directory is one level up
-    const dir = path_1.default.join(__dirname, "..");
+    // Ensure we find the Next.js app directory correctly
+    // In dev (server.ts), it's the current dir. In prod (dist/server.js), it's one level up.
+    const isDist = __dirname.endsWith("dist");
+    const dir = isDist ? path_1.default.join(__dirname, "..") : __dirname;
     const app = (0, next_1.default)({ dev, hostname, port, dir });
     const handle = app.getRequestHandler();
     await app.prepare();

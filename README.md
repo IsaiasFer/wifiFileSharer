@@ -30,39 +30,38 @@ Creado por [Isaias Fernandez](https://github.com/isaiasfer).
 
 ## 🚀 Instalación y Uso
 
-### Opción 1: Instalación Global (Recomendado)
-Puedes instalar la aplicación como una herramienta de línea de comandos global en tu sistema. Esto te permite iniciar el servidor desde cualquier lugar con un solo comando.
+### Opción 1: Uso instantáneo (Recomendado)
+Si tienes Node.js instalado, puedes ejecutar la aplicación sin instalar nada permanentemente:
+```bash
+npx wifi-file-sharer
+```
 
-1. **Construir e Instalar**:
-   ```bash
-   npm run build
-   sudo npm link # O úsalo sin sudo si tienes permisos
-   ```
+### Opción 2: Instalación Global
+Para tener el comando siempre disponible:
+```bash
+npm install -g wifi-file-sharer
+# Luego simplemente ejecuta:
+wifi-file-sharer
+```
 
-2. **Ejecutar**:
-   ```bash
-   wifi-file-sharer
-   ```
-
-3. **Opciones adicionales**:
-   ```bash
-   wifi-file-sharer --port 4000 --host 0.0.0.0
-   ```
-
-### Opción 2: Modo Desarrollador
-Si prefieres no instalarla globalmente, puedes clonar el repositorio:
-
+### Opción 3: Modo Desarrollador
+Si quieres modificar el código:
 1. **Clonar e instalar**:
    ```bash
    git clone https://github.com/isaiasfer/wifiFileSharer.git
    cd wifiFileSharer
    npm install
    ```
-
 2. **Iniciar**:
    ```bash
    npm run dev
    ```
+
+### ⚙️ Opciones avanzadas
+El comando acepta parámetros para personalizar la ejecución:
+```bash
+wifi-file-sharer --port 4000 --host 0.0.0.0
+```
 
 ### Cómo acceder desde otros dispositivos
 Para compartir archivos con alguien más en tu casa o oficina:
