@@ -20,7 +20,7 @@ Created by [Isaias Fernandez](https://github.com/isaiasfer).
 - **Multi-Device**: Works on Windows, macOS, Linux, Android, and iOS via browser.
 - **Advanced Moderation**: The room host can kick, IP-ban, and delete messages or files.
 - **Admin Dashboard**: Exclusive access for the server admin (localhost) to monitor all rooms in "Ghost Mode".
-- **Privacy**: Option to password-protect rooms.
+- **No Login Required**: Start sharing immediately without creating an account or logging in.
 - **Security**: No external dependencies for IP tracking (Zero SSRF risk).
 
 ### 🚀 Installation and Usage
@@ -92,7 +92,7 @@ Creado por [Isaias Fernandez](https://github.com/isaiasfer).
 - **Multidispositivo**: Funciona en Windows, macOS, Linux, Android e iOS a través del navegador.
 - **Moderación Avanzada**: El host de la sala puede expulsar (`kick`), bloquear por IP (`ban`), y borrar mensajes o archivos.
 - **Panel de Administración**: Acceso exclusivo para el administrador del servidor (localhost) para supervisar todas las salas en "Modo Fantasma".
-- **Privacidad**: Opción de proteger salas con contraseña.
+- **Sin Registro (No Login)**: Empieza a compartir al instante sin crear cuentas ni iniciar sesión.
 - **Seguridad**: Sin dependencias externas para rastreo de IP (Cero riesgo de SSRF).
 
 ### 🚀 Instalación y Uso
