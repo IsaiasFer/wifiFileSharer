@@ -64,9 +64,24 @@ async function startServer(options) {
     // Setup Socket.io events
     (0, socket_1.setupSocket)(io);
     global.io = io;
-    // Create temporary upload directory if it doesn't exist
+    // Create temporary upload directory if it doesn't exist and clean it
     const uploadDir = path_1.default.join(process.cwd(), "wifi-sharer-uploads");
-    if (!fs_1.default.existsSync(uploadDir)) {
+    if (fs_1.default.existsSync(uploadDir)) {
+        // Cleanup old files on startup
+        const files = fs_1.default.readdirSync(uploadDir);
+        for (const file of files) {
+            try {
+                const filePath = path_1.default.join(uploadDir, file);
+                if (fs_1.default.statSync(filePath).isFile()) {
+                    fs_1.default.unlinkSync(filePath);
+                }
+            }
+            catch (err) {
+                console.error(`Error cleaning up file ${file}:`, err);
+            }
+        }
+    }
+    else {
         fs_1.default.mkdirSync(uploadDir, { recursive: true });
     }
     // Upload Endpoint
