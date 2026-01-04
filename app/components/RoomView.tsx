@@ -1,0 +1,362 @@
+"use client";
+
+import { useState } from "react";
+import { Socket } from "socket.io-client";
+import { Room } from "@/lib/types";
+import FileTab from "./FileTab";
+import TextTab from "./TextTab";
+import ParticipantsPanel from "./ParticipantsPanel";
+import FileIcon from "./FileIcon";
+import Modal from "./Modal";
+
+interface RoomViewProps {
+  socket: Socket;
+  room: Room;
+  currentUserId: string;
+  isGhost?: boolean;
+}
+
+// Clipboard fallback for HTTP
+function copyToClipboard(text: string): Promise<void> {
+  if (navigator.clipboard && window.isSecureContext) {
+    return navigator.clipboard.writeText(text);
+  } else {
+    // Fallback for HTTP
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-999999px";
+    textArea.style.top = "-999999px";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    return new Promise((resolve, reject) => {
+      document.execCommand("copy") ? resolve() : reject();
+      textArea.remove();
+    });
+  }
+}
+
+export default function RoomView({ socket, room, currentUserId, isGhost = false }: RoomViewProps) {
+  const [activeTab, setActiveTab] = useState<"files" | "texts">("files");
+  const [showParticipants, setShowParticipants] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [deleteModal, setDeleteModal] = useState<{ type: "file" | "text"; id: string; name?: string } | null>(null);
+
+  const exitRoom = () => {
+    window.location.reload();
+  };
+
+  const currentUser = room.users.find((u) => u.id === currentUserId);
+  const isHost = currentUserId === room.hostId;
+  const maxMB = Math.round(room.settings.maxFileSize / 1024 / 1024);
+
+  const copyRoomId = () => {
+    copyToClipboard(room.id);
+  };
+
+  const copyMessage = (id: string, content: string) => {
+    copyToClipboard(content).then(() => {
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    });
+  };
+
+  const handleDeleteFile = (fileId: string) => {
+    socket.emit("delete_file", { roomId: room.id, fileId }, (res: any) => {
+      if (!res.success) alert(res.error || "Error al eliminar archivo");
+    });
+    setDeleteModal(null);
+  };
+
+  const handleDeleteText = (textId: string) => {
+    socket.emit("delete_text", { roomId: room.id, textId }, (res: any) => {
+      if (!res.success) alert(res.error || "Error al eliminar mensaje");
+    });
+    setDeleteModal(null);
+  };
+
+  const isImage = (type: string) => type.startsWith("image/");
+
+  return (
+    <div className="flex w-full animate-fadeIn room-container" style={{ height: "calc(100vh - 2rem)", maxWidth: "100%", width: "100%" }}>
+      {/* Main Content */}
+      <div className="flex flex-col flex-1 card room-main" style={{ margin: "0", borderRadius: showParticipants ? "var(--radius-lg) 0 0 var(--radius-lg)" : "var(--radius-lg)", width: "100%" }}>
+
+        {/* Header */}
+        <header className="flex items-center justify-between mb-4 room-header" style={{ paddingBottom: "1rem", borderBottom: "1px solid var(--card-border)", flexWrap: "wrap", gap: "0.5rem" }}>
+          <div className="flex items-center gap-3 flex-wrap">
+            <button
+              onClick={copyRoomId}
+              className="flex items-center gap-2 btn-ghost rounded"
+              style={{ padding: "6px 10px" }}
+              title="Copiar código de sala"
+            >
+              <span className="text-gradient" style={{ fontSize: "1.25rem", fontWeight: 700, letterSpacing: "2px" }}>
+                {room.id}
+              </span>
+              <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ opacity: 0.5 }}>
+                <rect x="9" y="9" width="13" height="13" rx="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+            </button>
+
+            {isHost && <span className="badge badge-primary">Host</span>}
+            {isGhost && <span className="badge badge-secondary">👻 Ghost</span>}
+            <span className="badge" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid var(--card-border)" }}>Máx. {maxMB}MB</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => setShowParticipants(!showParticipants)}
+              style={{ display: "flex", alignItems: "center", gap: "6px" }}
+            >
+              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+              <span>{room.users.length}</span>
+            </button>
+
+            <button onClick={exitRoom} className="btn btn-danger btn-sm" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+              </svg>
+              <span className="hide-mobile">Salir</span>
+            </button>
+          </div>
+        </header>
+
+        {/* Tabs */}
+        <div className="tabs mb-4">
+          <button className={`tab ${activeTab === "files" ? "active" : ""}`} onClick={() => setActiveTab("files")} style={{ display: "flex", alignItems: "center", gap: "8px", justifyContent: "center" }}>
+            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+            </svg>
+            <span>Archivos ({room.files.length})</span>
+          </button>
+          <button className={`tab ${activeTab === "texts" ? "active" : ""}`} onClick={() => setActiveTab("texts")} style={{ display: "flex", alignItems: "center", gap: "8px", justifyContent: "center" }}>
+            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+            <span>Chat ({room.texts.length})</span>
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto" style={{ paddingRight: "4px" }}>
+          {activeTab === "files" && (
+            <div className="animate-fadeIn flex flex-col gap-4">
+              {!isGhost && (
+                <FileTab
+                  roomId={room.id}
+                  senderId={currentUserId}
+                  senderName={currentUser?.nickname || "Anónimo"}
+                  maxFileSize={room.settings.maxFileSize}
+                />
+              )}
+
+              {room.files.length > 0 ? (
+                <div className="file-grid">
+                  {room.files.map((file) => (
+                    <div key={file.id} className="file-card flex flex-col gap-2 animate-slideUp" style={{ position: "relative" }}>
+                      {/* Delete Button (Host only) */}
+                      {isHost && (
+                        <button
+                          className="btn btn-icon btn-ghost"
+                          onClick={() => setDeleteModal({ type: "file", id: file.id, name: file.name })}
+                          style={{
+                            position: "absolute",
+                            top: "8px",
+                            right: "8px",
+                            width: "28px",
+                            height: "28px",
+                            background: "rgba(255, 51, 102, 0.2)",
+                            borderColor: "var(--accent)",
+                            zIndex: 2,
+                          }}
+                          title="Eliminar archivo"
+                        >
+                          <svg width="12" height="12" fill="none" stroke="var(--accent)" strokeWidth="3" viewBox="0 0 24 24">
+                            <path d="M18 6L6 18M6 6l12 12" />
+                          </svg>
+                        </button>
+                      )}
+
+                      {/* Image Preview */}
+                      {isImage(file.type) ? (
+                        <div
+                          className="image-preview"
+                          style={{
+                            width: "100%",
+                            height: "120px",
+                            backgroundImage: `url(/api/preview/${file.id}?roomId=${room.id})`,
+                            backgroundSize: "cover",
+                            backgroundPosition: "center",
+                            borderRadius: "8px",
+                            marginBottom: "8px"
+                          }}
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center" style={{ height: "60px", opacity: 0.5 }}>
+                          <FileIcon mimeType={file.type} size={40} />
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2">
+                        {!isImage(file.type) && <FileIcon mimeType={file.type} size={20} />}
+                        <span className="truncate" style={{ fontWeight: 600, flex: 1, fontSize: "0.9rem" }}>{file.name}</span>
+                      </div>
+                      <div className="text-muted" style={{ fontSize: "0.75rem" }}>
+                        {(file.size / 1024 / 1024).toFixed(2)} MB · {file.senderName}
+                      </div>
+                      <a
+                        href={`/api/download/${file.id}?roomId=${room.id}`}
+                        target="_blank"
+                        className="btn btn-secondary btn-sm mt-auto"
+                        style={{ display: "flex", alignItems: "center", gap: "6px", justifyContent: "center" }}
+                      >
+                        <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                        </svg>
+                        <span>Descargar</span>
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-muted" style={{ padding: "3rem", textAlign: "center" }}>
+                  <div style={{ display: "flex", justifyContent: "center", marginBottom: "1rem" }}>
+                    <svg width="48" height="48" fill="none" stroke="currentColor" strokeWidth="1" viewBox="0 0 24 24" style={{ opacity: 0.3 }}>
+                      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                    </svg>
+                  </div>
+                  <span>No hay archivos</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "texts" && (
+            <div className="animate-fadeIn flex flex-col h-full">
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto flex flex-col gap-3 mb-4" style={{ paddingRight: "4px" }}>
+                {room.texts.map((item) => (
+                  <div
+                    key={item.id}
+                    className="message-bubble animate-slideUp"
+                    style={{
+                      alignSelf: item.senderId === currentUserId ? "flex-end" : "flex-start",
+                      background: item.senderId === currentUserId ? "rgba(168, 85, 247, 0.15)" : "rgba(255,255,255,0.03)",
+                      padding: "10px 14px",
+                      borderRadius: "var(--radius)",
+                      maxWidth: "85%",
+                      border: item.senderId === currentUserId ? "1px solid rgba(168, 85, 247, 0.3)" : "1px solid var(--card-border)",
+                      position: "relative",
+                    }}
+                  >
+                    <div className="flex items-center justify-between gap-4 mb-1">
+                      <span className="text-muted" style={{ fontSize: "0.7rem", fontWeight: 600 }}>{item.senderName}</span>
+                      <div className="flex items-center gap-1">
+                        {isHost && (
+                          <button
+                            className="copy-btn"
+                            onClick={() => setDeleteModal({ type: "text", id: item.id })}
+                            title="Eliminar mensaje"
+                            style={{
+                              background: "rgba(255, 51, 102, 0.1)",
+                              border: "none",
+                              borderRadius: "4px",
+                              cursor: "pointer",
+                              padding: "4px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            <svg width="12" height="12" fill="none" stroke="var(--accent)" strokeWidth="2" viewBox="0 0 24 24">
+                              <path d="M18 6L6 18M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
+                        <button
+                          className="copy-btn"
+                          onClick={() => copyMessage(item.id, item.content)}
+                          title="Copiar mensaje"
+                          style={{
+                            background: copiedId === item.id ? "rgba(34, 197, 94, 0.2)" : "rgba(255,255,255,0.05)",
+                            border: "none",
+                            borderRadius: "4px",
+                            cursor: "pointer",
+                            padding: "4px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            transition: "all 0.2s",
+                          }}
+                        >
+                          {copiedId === item.id ? (
+                            <svg width="12" height="12" fill="none" stroke="var(--success)" strokeWidth="2" viewBox="0 0 24 24">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          ) : (
+                            <svg width="12" height="12" fill="none" stroke="var(--muted)" strokeWidth="2" viewBox="0 0 24 24">
+                              <rect x="9" y="9" width="13" height="13" rx="2" />
+                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                    <div style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: "0.95rem", lineHeight: 1.5 }}>{item.content}</div>
+                  </div>
+                ))}
+                {room.texts.length === 0 && (
+                  <div className="text-muted" style={{ padding: "3rem", textAlign: "center" }}>
+                    <div style={{ display: "flex", justifyContent: "center", marginBottom: "1rem" }}>
+                      <svg width="48" height="48" fill="none" stroke="currentColor" strokeWidth="1" viewBox="0 0 24 24" style={{ opacity: 0.3 }}>
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                      </svg>
+                    </div>
+                    <span>No hay mensajes</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Input (not for ghosts) */}
+              {!isGhost && (
+                <TextTab socket={socket} roomId={room.id} senderName={currentUser?.nickname || "Anónimo"} />
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Participants Panel */}
+      <ParticipantsPanel
+        socket={socket}
+        users={room.users}
+        hostId={room.hostId}
+        currentUserId={currentUserId}
+        roomId={room.id}
+        isOpen={showParticipants}
+        onClose={() => setShowParticipants(false)}
+      />
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal && (
+        <Modal
+          isOpen={true}
+          onClose={() => setDeleteModal(null)}
+          title={deleteModal.type === "file" ? "Eliminar Archivo" : "Eliminar Mensaje"}
+          message={deleteModal.type === "file" ? `¿Estás seguro de que quieres eliminar el archivo "${deleteModal.name}"?` : "¿Estás seguro de que quieres eliminar este mensaje?"}
+          type="confirm"
+          confirmText="Eliminar"
+          onConfirm={() => deleteModal.type === "file" ? handleDeleteFile(deleteModal.id) : handleDeleteText(deleteModal.id)}
+        />
+      )}
+    </div>
+  );
+}

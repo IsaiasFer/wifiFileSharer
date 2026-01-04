@@ -1,0 +1,289 @@
+"use client";
+
+import { useState } from "react";
+import { Socket } from "socket.io-client";
+import { FILE_SIZE_OPTIONS } from "@/lib/types";
+
+interface ConnectFormProps {
+  socket: Socket;
+}
+
+export default function ConnectForm({ socket }: ConnectFormProps) {
+  const [mode, setMode] = useState<"join" | "create">("join");
+  const [nickname, setNickname] = useState("");
+  const [roomId, setRoomId] = useState("");
+  const [password, setPassword] = useState("");
+  const [maxFileSize, setMaxFileSize] = useState(FILE_SIZE_OPTIONS[2].value);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [showFileSizeDropdown, setShowFileSizeDropdown] = useState(false);
+
+  const selectedSizeLabel = FILE_SIZE_OPTIONS.find((opt) => opt.value === maxFileSize)?.label || "100 MB";
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    if (!nickname.trim()) {
+      setError("Por favor ingresa un nombre");
+      setLoading(false);
+      return;
+    }
+
+    if (mode === "join") {
+      if (!roomId.trim()) {
+        setError("Ingresa el ID de la sala");
+        setLoading(false);
+        return;
+      }
+      socket.emit("join_room", { roomId, nickname: nickname.trim(), password }, (response: any) => {
+        setLoading(false);
+        if (!response.success) {
+          setError(response.error || "Error al unirse");
+        }
+      });
+    } else {
+      socket.emit("create_room", { nickname: nickname.trim(), password, maxFileSize }, (response: any) => {
+        setLoading(false);
+        if (!response.success) {
+          setError("Error al crear sala");
+        }
+      });
+    }
+  };
+
+  return (
+    <div className="card card-glow animate-slideUp" style={{ maxWidth: "420px", width: "100%" }}>
+      {/* Tabs */}
+      <div className="tabs mb-6" style={{ display: "flex", gap: "6px", background: "rgba(255, 255, 255, 0.05)", padding: "4px", borderRadius: "12px" }}>
+        <button
+          type="button"
+          onClick={() => setMode("join")}
+          className={`tab ${mode === "join" ? "active" : ""}`}
+          style={{
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "8px",
+            padding: "12px",
+            border: "none",
+            borderRadius: "8px",
+            background: mode === "join" ? "rgba(0, 240, 255, 0.15)" : "transparent",
+            color: mode === "join" ? "var(--primary)" : "var(--muted)",
+            fontWeight: 600,
+            cursor: "pointer",
+            transition: "all 0.2s"
+          }}
+        >
+          <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M13.8 12H3" />
+          </svg>
+          <span style={{ lineHeight: 1 }}>Unirse</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("create")}
+          className={`tab ${mode === "create" ? "active" : ""}`}
+          style={{
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "8px",
+            padding: "12px",
+            border: "none",
+            borderRadius: "8px",
+            background: mode === "create" ? "rgba(0, 240, 255, 0.15)" : "transparent",
+            color: mode === "create" ? "var(--primary)" : "var(--muted)",
+            fontWeight: 600,
+            cursor: "pointer",
+            transition: "all 0.2s"
+          }}
+        >
+          <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          <span style={{ lineHeight: 1 }}>Crear</span>
+        </button>
+      </div>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {/* Nickname */}
+        <div>
+          <label className="text-muted" style={{ fontSize: "0.85rem", marginBottom: "6px", display: "block" }}>
+            Tu Apodo
+          </label>
+          <input
+            className="input"
+            placeholder="Ej: Carlos"
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value)}
+            maxLength={15}
+            autoComplete="off"
+          />
+        </div>
+
+        {/* Room ID (Join mode) */}
+        {mode === "join" && (
+          <div className="animate-fadeIn">
+            <label className="text-muted" style={{ fontSize: "0.85rem", marginBottom: "6px", display: "block" }}>
+              Código de Sala
+            </label>
+            <input
+              className="input"
+              placeholder="Ej: ABCD"
+              value={roomId}
+              onChange={(e) => setRoomId(e.target.value.toUpperCase())}
+              maxLength={6}
+              style={{ textTransform: "uppercase", letterSpacing: "4px", fontWeight: "600" }}
+              autoComplete="off"
+            />
+          </div>
+        )}
+
+        {/* Max File Size (Create mode) - Custom Dropdown */}
+        {mode === "create" && (
+          <div className="animate-fadeIn" style={{ position: "relative" }}>
+            <label className="text-muted" style={{ fontSize: "0.85rem", marginBottom: "6px", display: "block" }}>
+              Límite de Archivo
+            </label>
+            <button
+              type="button"
+              className="input"
+              onClick={() => setShowFileSizeDropdown(!showFileSizeDropdown)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                cursor: "pointer",
+                marginBottom: 0,
+              }}
+            >
+              <span>{selectedSizeLabel}</span>
+              <svg
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+                style={{ transform: showFileSizeDropdown ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s" }}
+              >
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </button>
+            {showFileSizeDropdown && (
+              <div
+                className="card animate-fadeIn"
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  right: 0,
+                  marginTop: "4px",
+                  padding: "6px",
+                  zIndex: 10,
+                  background: "#1a1a2e",
+                  border: "1px solid var(--primary)",
+                  boxShadow: "0 10px 30px rgba(0,0,0,0.5)"
+                }}
+              >
+                {FILE_SIZE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => {
+                      setMaxFileSize(opt.value);
+                      setShowFileSizeDropdown(false);
+                    }}
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      padding: "12px",
+                      textAlign: "left",
+                      background: maxFileSize === opt.value ? "rgba(0, 240, 255, 0.2)" : "transparent",
+                      border: "none",
+                      borderRadius: "8px",
+                      color: maxFileSize === opt.value ? "var(--primary)" : "#fff",
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                      fontSize: "0.95rem",
+                      fontWeight: maxFileSize === opt.value ? 700 : 500
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.1)")}
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.background = maxFileSize === opt.value ? "rgba(0, 240, 255, 0.2)" : "transparent")
+                    }
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Password */}
+        <div>
+          <label className="text-muted" style={{ fontSize: "0.85rem", marginBottom: "6px", display: "block" }}>
+            Contraseña <span style={{ opacity: 0.5 }}>(opcional)</span>
+          </label>
+          <input
+            className="input"
+            type="password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="off"
+          />
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div
+            className="animate-fadeIn"
+            style={{
+              background: "rgba(255, 51, 102, 0.1)",
+              border: "1px solid var(--accent)",
+              borderRadius: "var(--radius)",
+              padding: "12px",
+              color: "var(--accent)",
+              fontSize: "0.9rem",
+            }}
+          >
+            {error}
+          </div>
+        )}
+
+        {/* Submit */}
+        <button type="submit" className="btn btn-primary w-full" disabled={loading} style={{ marginTop: "8px" }}>
+          {loading ? (
+            <span className="flex items-center gap-2" style={{ justifyContent: "center" }}>
+              <svg className="animate-pulse" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" opacity="0.3" />
+                <path d="M12 2a10 10 0 0 1 10 10" />
+              </svg>
+              <span>Procesando...</span>
+            </span>
+          ) : mode === "join" ? (
+            <span className="flex items-center gap-2" style={{ justifyContent: "center" }}>
+              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M13.8 12H3" />
+              </svg>
+              <span style={{ lineHeight: 1 }}>Entrar a Sala</span>
+            </span>
+          ) : (
+            <span className="flex items-center gap-2" style={{ justifyContent: "center" }}>
+              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              <span style={{ lineHeight: 1 }}>Crear Sala</span>
+            </span>
+          )}
+        </button>
+      </form>
+    </div>
+  );
+}

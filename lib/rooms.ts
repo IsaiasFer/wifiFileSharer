@@ -1,0 +1,192 @@
+import { Room, User, SharedFile, SharedText, RoomSettings, RoomSummary, DEFAULT_ROOM_SETTINGS } from "./types";
+import fs from "fs";
+
+// In-memory store
+const rooms: Map<string, Room> = new Map();
+
+const generateRoomId = () => {
+  return Math.random().toString(36).substring(2, 6).toUpperCase();
+};
+
+export const createRoom = (hostId: string, password?: string, settings?: Partial<RoomSettings>): Room => {
+  const id = generateRoomId();
+  if (rooms.has(id)) return createRoom(hostId, password, settings);
+
+  const newRoom: Room = {
+    id,
+    password,
+    hostId,
+    users: [],
+    ghosts: [],
+    files: [],
+    texts: [],
+    settings: { ...DEFAULT_ROOM_SETTINGS, ...settings },
+    bannedIps: [],
+    createdAt: Date.now(),
+  };
+
+  rooms.set(id, newRoom);
+  return newRoom;
+};
+
+export const getRoom = (roomId: string): Room | undefined => {
+  return rooms.get(roomId);
+};
+
+// Get all rooms (for admin panel)
+export const getAllRooms = (): RoomSummary[] => {
+  const summaries: RoomSummary[] = [];
+  rooms.forEach((room) => {
+    summaries.push({
+      id: room.id,
+      hasPassword: !!room.password,
+      userCount: room.users.length,
+      fileCount: room.files.length,
+      textCount: room.texts.length,
+      createdAt: room.createdAt,
+    });
+  });
+  return summaries;
+};
+
+export const joinRoom = (roomId: string, user: User, password?: string): { success: boolean; error?: string } => {
+  const room = rooms.get(roomId);
+  if (!room) return { success: false, error: "Sala no encontrada" };
+
+  // Check if IP is banned
+  if (room.bannedIps.includes(user.ip)) {
+    return { success: false, error: "Has sido bloqueado de esta sala" };
+  }
+
+  if (room.password && room.password !== password) {
+    return { success: false, error: "Contraseña incorrecta" };
+  }
+
+  const existingUser = room.users.find((u) => u.id === user.id);
+  if (!existingUser) {
+    room.users.push(user);
+  }
+
+  return { success: true };
+};
+
+// Join as ghost (admin only - doesn't appear in users list)
+export const joinRoomAsGhost = (roomId: string, ghost: User): { success: boolean; room?: Room; error?: string } => {
+  const room = rooms.get(roomId);
+  if (!room) return { success: false, error: "Sala no encontrada" };
+
+  // Ghosts bypass password check
+  const existingGhost = room.ghosts.find((g) => g.id === ghost.id);
+  if (!existingGhost) {
+    room.ghosts.push({ ...ghost, isGhost: true });
+  }
+
+  return { success: true, room };
+};
+
+export const leaveRoom = (roomId: string, userId: string): Room | undefined => {
+  const room = rooms.get(roomId);
+  if (!room) return undefined;
+
+  // Check if it's a ghost leaving
+  const ghostIndex = room.ghosts.findIndex((g) => g.id === userId);
+  if (ghostIndex !== -1) {
+    room.ghosts.splice(ghostIndex, 1);
+    return room;
+  }
+
+  room.users = room.users.filter((u) => u.id !== userId);
+
+  if (room.users.length === 0 || userId === room.hostId) {
+    deleteRoom(roomId);
+    return undefined;
+  }
+
+  return room;
+};
+
+// Kick user from room (host only)
+export const kickUser = (roomId: string, targetUserId: string): { success: boolean; kickedUser?: User } => {
+  const room = rooms.get(roomId);
+  if (!room) return { success: false };
+
+  const userIndex = room.users.findIndex((u) => u.id === targetUserId);
+  if (userIndex === -1) return { success: false };
+
+  const kickedUser = room.users[userIndex];
+  room.users.splice(userIndex, 1);
+
+  return { success: true, kickedUser };
+};
+
+// Ban user IP from room (host only)
+export const banUserIp = (roomId: string, ip: string): boolean => {
+  const room = rooms.get(roomId);
+  if (!room) return false;
+
+  if (!room.bannedIps.includes(ip)) {
+    room.bannedIps.push(ip);
+  }
+  return true;
+};
+
+export const deleteRoom = (roomId: string) => {
+  const room = rooms.get(roomId);
+  if (room) {
+    room.files.forEach((file) => {
+      try {
+        if (fs.existsSync(file.path)) {
+          fs.unlinkSync(file.path);
+        }
+      } catch (err) {
+        console.error(`Error deleting file ${file.path}:`, err);
+      }
+    });
+    rooms.delete(roomId);
+  }
+};
+
+export const addFileToRoom = (roomId: string, file: SharedFile) => {
+  const room = rooms.get(roomId);
+  if (room) {
+    room.files.push(file);
+  }
+};
+
+export const addTextToRoom = (roomId: string, text: SharedText) => {
+  const room = rooms.get(roomId);
+  if (room) {
+    room.texts.push(text);
+  }
+};
+
+export const removeFileFromRoom = (roomId: string, fileId: string): boolean => {
+  const room = rooms.get(roomId);
+  if (!room) return false;
+
+  const fileIndex = room.files.findIndex((f) => f.id === fileId);
+  if (fileIndex === -1) return false;
+
+  const file = room.files[fileIndex];
+  try {
+    if (fs.existsSync(file.path)) {
+      fs.unlinkSync(file.path);
+    }
+  } catch (err) {
+    console.error(`Error deleting file ${file.path}:`, err);
+  }
+
+  room.files.splice(fileIndex, 1);
+  return true;
+};
+
+export const removeTextFromRoom = (roomId: string, textId: string): boolean => {
+  const room = rooms.get(roomId);
+  if (!room) return false;
+
+  const textIndex = room.texts.findIndex((t) => t.id === textId);
+  if (textIndex === -1) return false;
+
+  room.texts.splice(textIndex, 1);
+  return true;
+};
