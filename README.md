@@ -30,26 +30,41 @@ Creado por [Isaias Fernandez](https://github.com/isaiasfer).
 
 ## 🚀 Instalación y Uso
 
-### Pasos iniciales
+### Opción 1: Instalación Global (Recomendado)
+Puedes instalar la aplicación como una herramienta de línea de comandos global en tu sistema. Esto te permite iniciar el servidor desde cualquier lugar con un solo comando.
 
-1. **Clonar el repositorio**:
+1. **Construir e Instalar**:
+   ```bash
+   npm run build
+   sudo npm link # O úsalo sin sudo si tienes permisos
+   ```
+
+2. **Ejecutar**:
+   ```bash
+   wifi-file-sharer
+   ```
+
+3. **Opciones adicionales**:
+   ```bash
+   wifi-file-sharer --port 4000 --host 0.0.0.0
+   ```
+
+### Opción 2: Modo Desarrollador
+Si prefieres no instalarla globalmente, puedes clonar el repositorio:
+
+1. **Clonar e instalar**:
    ```bash
    git clone https://github.com/isaiasfer/wifiFileSharer.git
    cd wifiFileSharer
-   ```
-
-2. **Instalar dependencias**:
-   ```bash
    npm install
    ```
 
-3. **Iniciar en modo desarrollo**:
+2. **Iniciar**:
    ```bash
    npm run dev
    ```
 
 ### Cómo acceder desde otros dispositivos
-
 Para compartir archivos con alguien más en tu casa o oficina:
 
 1. El servidor te indicará tu IP local en la terminal, por ejemplo: `http://192.168.1.15:3000`.
@@ -80,7 +95,7 @@ Si accedes desde el mismo ordenador donde corre el servidor (`http://localhost:3
 
 ## 📝 Notas Técnicas
 
-- **Almacenamiento**: Los archivos se guardan temporalmente en la carpeta `/tmp` del sistema.
+- **Almacenamiento**: Los archivos se guardan temporalmente en la carpeta `wifi-sharer-uploads` dentro del directorio desde donde ejecutaste el comando.
 - **Seguridad**: El bloqueo por IP (`ban`) es efectivo mientras el servidor no se reinicie, ya que la lista es en memoria.
 - **HTTPS**: Para que el botón de copiar funcione en todos los navegadores móviles, se recomienda acceder mediante HTTPS o usar los fallbacks implementados en la app.
 

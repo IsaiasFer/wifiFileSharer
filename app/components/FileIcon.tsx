@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { getFileCategory } from "@/lib/types";
 
 interface FileIconProps {
@@ -11,7 +12,7 @@ interface FileIconProps {
 export default function FileIcon({ mimeType, size = 24, className = "" }: FileIconProps) {
   const category = getFileCategory(mimeType);
 
-  const icons: Record<string, JSX.Element> = {
+  const icons: Record<string, React.ReactNode> = {
     image: (
       <svg width={size} height={size} fill="none" stroke="var(--success)" strokeWidth="1.5" viewBox="0 0 24 24" className={className}>
         <rect x="3" y="3" width="18" height="18" rx="2" />

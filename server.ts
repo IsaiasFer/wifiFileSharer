@@ -12,13 +12,17 @@ import { addFileToRoom, getRoom } from "./lib/rooms";
 import { SharedFile } from "./lib/types";
 
 const dev = process.env.NODE_ENV !== "production";
-const hostname = "0.0.0.0";
-const port = 3000;
 
-const app = next({ dev, hostname, port });
-const handle = app.getRequestHandler();
+export async function startServer(options: { port: number; hostname: string }) {
+  const { port, hostname } = options;
 
-app.prepare().then(() => {
+  // When running from 'dist/server.js', the app directory is one level up
+  const dir = path.join(__dirname, "..");
+  const app = next({ dev, hostname, port, dir });
+  const handle = app.getRequestHandler();
+
+  await app.prepare();
+
   const server = express();
   const httpServer = createServer(server);
   const io = new Server(httpServer);
@@ -27,16 +31,22 @@ app.prepare().then(() => {
   setupSocket(io);
   (global as any).io = io;
 
+  // Create temporary upload directory if it doesn't exist
+  const uploadDir = path.join(process.cwd(), "wifi-sharer-uploads");
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+
   // Upload Endpoint
   server.post("/api/upload", (req: Request, res: Response) => {
-    // First, parse with a high limit to get the file, then validate against room settings
     const form = formidable({
-      uploadDir: "/tmp",
+      uploadDir: uploadDir,
       keepExtensions: true,
       maxFileSize: 500 * 1024 * 1024, // Server max: 500MB
     });
 
     form.parse(req, (err, fields, files) => {
+      // ... same logic as before, but using uploadDir ...
       if (err) {
         console.error("Upload error:", err);
         res.status(500).json({ error: "Upload failed" });
@@ -46,7 +56,6 @@ app.prepare().then(() => {
       const roomId = Array.isArray(fields.roomId) ? fields.roomId[0] : fields.roomId;
       const senderId = Array.isArray(fields.senderId) ? fields.senderId[0] : fields.senderId;
       const senderName = Array.isArray(fields.senderName) ? fields.senderName[0] : fields.senderName;
-
       const uploadedFile = Array.isArray(files.file) ? files.file[0] : files.file;
 
       if (!roomId || !uploadedFile) {
@@ -54,7 +63,6 @@ app.prepare().then(() => {
         return;
       }
 
-      // Verify room exists
       const room = getRoom(roomId);
       if (!room) {
         fs.unlinkSync(uploadedFile.filepath);
@@ -62,7 +70,6 @@ app.prepare().then(() => {
         return;
       }
 
-      // Validate file size against room settings
       if (uploadedFile.size > room.settings.maxFileSize) {
         fs.unlinkSync(uploadedFile.filepath);
         const maxMB = Math.round(room.settings.maxFileSize / 1024 / 1024);
@@ -83,7 +90,6 @@ app.prepare().then(() => {
 
       addFileToRoom(roomId, sharedFile);
 
-      // Notify room
       io.to(roomId).emit("file_uploaded", sharedFile);
       io.to(roomId).emit("room_updated", getRoom(roomId));
 
@@ -111,7 +117,7 @@ app.prepare().then(() => {
     res.download(file.path, file.name);
   });
 
-  // Preview Endpoint (for images)
+  // Preview Endpoint
   server.get("/api/preview/:fileId", (req: Request, res: Response) => {
     const { fileId } = req.params;
     const { roomId } = req.query;
@@ -128,27 +134,42 @@ app.prepare().then(() => {
       return;
     }
 
-    // Only serve images
     if (!file.type.startsWith("image/")) {
       res.status(400).send("Not an image");
       return;
     }
 
-    // Send the image file directly
     res.setHeader("Content-Type", file.type);
     res.setHeader("Cache-Control", "public, max-age=3600");
     fs.createReadStream(file.path).pipe(res);
   });
 
-  // Handle all other routes with Next.js (Express 5 fix)
+  // Next.js Handler
   server.all(/(.*)/, (req: Request, res: Response) => {
     const parsedUrl = parse(req.url!, true);
     handle(req as any, res as any, parsedUrl);
   });
 
-  httpServer.listen(port, hostname, () => {
+  httpServer.listen(port, hostname, async () => {
     const localIp = ip.address();
-    console.log(`> Ready on http://${hostname}:${port}`);
-    console.log(`> LAN Access: http://${localIp}:${port}`);
+    const url = `http://localhost:${port}`;
+    console.log(`\n🚀 Wifi File Sharer is running!`);
+    console.log(`📡 Local:   ${url}`);
+    console.log(`🌐 Network: http://${localIp}:${port}\n`);
+
+    if (!dev) {
+      const open = (await import("open")).default;
+      try {
+        await open(url);
+      } catch (e) {
+        // Silently fail if browser can't open
+      }
+    }
   });
-});
+}
+
+// Start if run directly
+if (require.main === module) {
+  const port = parseInt(process.env.PORT || "3000", 10);
+  startServer({ port, hostname: "0.0.0.0" });
+}

@@ -1,18 +1,46 @@
 {
-  "name": "app",
-  "version": "0.1.0",
-  "private": true,
+  "name": "wifi-file-sharer",
+  "version": "1.0.0",
+  "private": false,
+  "description": "A simple way to share files over WiFi using a robust web interface.",
+  "author": "Isaias Fernandez",
+  "license": "MIT",
+  "keywords": [
+    "wifi",
+    "file-sharing",
+    "lan",
+    "nextjs",
+    "express",
+    "cli"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/isaiasfer/wifiFileSharer"
+  },
+  "bin": {
+    "wifi-file-sharer": "./dist/bin/cli.js"
+  },
+  "files": [
+    "dist",
+    ".next",
+    "public"
+  ],
   "scripts": {
     "dev": "nodemon server.ts",
-    "build": "next build",
-    "start": "cross-env NODE_ENV=production ts-node server.ts",
-    "lint": "next lint"
+    "build": "npm run build:next && npm run build:cli",
+    "build:next": "next build",
+    "build:cli": "tsc -p tsconfig.cli.json",
+    "start": "node dist/server.js",
+    "lint": "next lint",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
+    "commander": "^14.0.2",
     "express": "^5.2.1",
     "formidable": "^3.5.4",
     "ip": "^2.0.1",
     "next": "16.1.1",
+    "open": "^11.0.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "server-only": "^0.0.1",
