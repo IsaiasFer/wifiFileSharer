@@ -8,9 +8,24 @@ const generateRoomId = () => {
   return Math.random().toString(36).substring(2, 6).toUpperCase();
 };
 
-export const createRoom = (hostId: string, password?: string, settings?: Partial<RoomSettings>): Room => {
-  const id = generateRoomId();
-  if (rooms.has(id)) return createRoom(hostId, password, settings);
+export const createRoom = (hostId: string, password?: string, settings?: Partial<RoomSettings>, customId?: string): Room => {
+  let id = generateRoomId();
+
+  if (customId) {
+    const cleanId = customId.trim().toUpperCase();
+    if (!/^[A-Z0-9]{1,10}$/.test(cleanId)) {
+      throw new Error("El nombre de la sala debe ser alfanumérico y de máximo 10 caracteres.");
+    }
+    if (rooms.has(cleanId)) {
+      throw new Error("El nombre de la sala ya está en uso.");
+    }
+    id = cleanId;
+  } else {
+    // Ensure random ID uniqueness (though unlikely to collide)
+    while (rooms.has(id)) {
+      id = generateRoomId();
+    }
+  }
 
   const newRoom: Room = {
     id,

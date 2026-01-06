@@ -36,28 +36,32 @@ export const setupSocket = (io: Server) => {
     // Tell client if they are admin
     socket.emit("admin_status", { isAdmin });
 
-    socket.on("create_room", ({ nickname, password, maxFileSize }, callback) => {
+    socket.on("create_room", ({ nickname, password, maxFileSize, customId }, callback) => {
       const settings: Partial<RoomSettings> = {};
       if (maxFileSize) settings.maxFileSize = maxFileSize;
 
-      const room = createRoom(socket.id, password, settings);
+      try {
+        const room = createRoom(socket.id, password, settings, customId);
 
-      const user: User = {
-        id: socket.id,
-        nickname,
-        roomId: room.id,
-        ip: clientIp,
-        userAgent,
-        os,
-        browser,
-        joinedAt: Date.now(),
-      };
+        const user: User = {
+          id: socket.id,
+          nickname,
+          roomId: room.id,
+          ip: clientIp,
+          userAgent,
+          os,
+          browser,
+          joinedAt: Date.now(),
+        };
 
-      joinRoom(room.id, user, password);
-      socket.join(room.id);
+        joinRoom(room.id, user, password);
+        socket.join(room.id);
 
-      callback({ success: true, roomId: room.id });
-      io.to(room.id).emit("room_updated", getRoom(room.id));
+        callback({ success: true, roomId: room.id });
+        io.to(room.id).emit("room_updated", getRoom(room.id));
+      } catch (error: any) {
+        callback({ success: false, error: error.message || "Error al crear sala" });
+      }
     });
 
     socket.on("join_room", ({ roomId, nickname, password }, callback) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Socket } from "socket.io-client";
 import { FILE_SIZE_OPTIONS } from "@/lib/types";
 
@@ -12,7 +12,13 @@ export default function ConnectForm({ socket }: ConnectFormProps) {
   const [mode, setMode] = useState<"join" | "create">("join");
   const [nickname, setNickname] = useState("");
   const [roomId, setRoomId] = useState("");
+  const [customRoomId, setCustomRoomId] = useState("");
   const [password, setPassword] = useState("");
+
+  useEffect(() => {
+    const stored = localStorage.getItem("wifi_sharer_nickname");
+    if (stored) setNickname(stored);
+  }, []);
   const [maxFileSize, setMaxFileSize] = useState(FILE_SIZE_OPTIONS[2].value);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -41,13 +47,17 @@ export default function ConnectForm({ socket }: ConnectFormProps) {
         setLoading(false);
         if (!response.success) {
           setError(response.error || "Error al unirse");
+        } else {
+          localStorage.setItem("wifi_sharer_nickname", nickname.trim());
         }
       });
     } else {
-      socket.emit("create_room", { nickname: nickname.trim(), password, maxFileSize }, (response: any) => {
+      socket.emit("create_room", { nickname: nickname.trim(), password, maxFileSize, customId: customRoomId.trim() }, (response: any) => {
         setLoading(false);
         if (!response.success) {
-          setError("Error al crear sala");
+          setError(response.error || "Error al crear sala");
+        } else {
+          localStorage.setItem("wifi_sharer_nickname", nickname.trim());
         }
       });
     }
@@ -222,6 +232,25 @@ export default function ConnectForm({ socket }: ConnectFormProps) {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Custom Room ID (Create mode) - Optional */}
+        {mode === "create" && (
+          <div className="animate-fadeIn">
+            <label className="text-muted" style={{ fontSize: "0.85rem", marginBottom: "6px", display: "block" }}>
+              Nombre de Sala <span style={{ opacity: 0.5 }}>(opcional)</span>
+            </label>
+            <input
+              className="input"
+              placeholder="Ej: MYSALA1"
+              value={customRoomId}
+              onChange={(e) => setCustomRoomId(e.target.value.toUpperCase())}
+              maxLength={10}
+              style={{ textTransform: "uppercase", letterSpacing: "2px", fontWeight: "600" }}
+              autoComplete="off"
+            />
+            <p style={{ fontSize: "0.75rem", color: "var(--muted)", marginTop: "4px" }}>Solo letras y números, máx 10.</p>
           </div>
         )}
 
