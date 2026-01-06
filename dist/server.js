@@ -48,13 +48,13 @@ const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const socket_1 = require("./lib/socket");
 const rooms_1 = require("./lib/rooms");
-const dev = process.env.NODE_ENV !== "production";
+const isDist = __dirname.endsWith("dist");
+const dev = process.env.NODE_ENV === "development" || (!isDist && process.env.NODE_ENV !== "production");
 async function startServer(options) {
     let { port } = options;
     const { hostname } = options;
     // Ensure we find the Next.js app directory correctly
     // In dev (server.ts), it's the current dir. In prod (dist/server.js), it's one level up.
-    const isDist = __dirname.endsWith("dist");
     const dir = isDist ? path_1.default.join(__dirname, "..") : __dirname;
     const app = (0, next_1.default)({ dev, hostname, port, dir });
     const handle = app.getRequestHandler();

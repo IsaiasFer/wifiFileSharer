@@ -11,7 +11,8 @@ import { setupSocket } from "./lib/socket";
 import { addFileToRoom, getRoom } from "./lib/rooms";
 import { SharedFile } from "./lib/types";
 
-const dev = process.env.NODE_ENV !== "production";
+const isDist = __dirname.endsWith("dist");
+const dev = process.env.NODE_ENV === "development" || (!isDist && process.env.NODE_ENV !== "production");
 
 export async function startServer(options: { port: number; hostname: string }) {
   let { port } = options;
@@ -19,7 +20,6 @@ export async function startServer(options: { port: number; hostname: string }) {
 
   // Ensure we find the Next.js app directory correctly
   // In dev (server.ts), it's the current dir. In prod (dist/server.js), it's one level up.
-  const isDist = __dirname.endsWith("dist");
   const dir = isDist ? path.join(__dirname, "..") : __dirname;
   const app = next({ dev, hostname, port, dir });
   const handle = app.getRequestHandler();
