@@ -99,6 +99,33 @@ export const joinRoomAsGhost = (roomId: string, ghost: User): { success: boolean
   return { success: true, room };
 };
 
+export const transferHost = (roomId: string): boolean => {
+  const room = rooms.get(roomId);
+  if (!room || room.users.length === 0) return false;
+
+  // Transfer host to the first user in the list
+  room.hostId = room.users[0].id;
+  return true;
+};
+
+export const updateUserSocketId = (roomId: string, oldSocketId: string, newSocketId: string, nickname: string): { success: boolean; room?: Room; error?: string } => {
+  const room = rooms.get(roomId);
+  if (!room) return { success: false, error: "Sala no encontrada" };
+
+  const userIndex = room.users.findIndex((u) => u.nickname === nickname);
+  if (userIndex === -1) return { success: false, error: "Usuario no encontrado en la sala" };
+
+  // Update the socket ID
+  room.users[userIndex].id = newSocketId;
+  
+  // If this user was the host, update host ID as well
+  if (room.hostId === oldSocketId) {
+    room.hostId = newSocketId;
+  }
+
+  return { success: true, room };
+};
+
 export const leaveRoom = (roomId: string, userId: string): Room | undefined => {
   const room = rooms.get(roomId);
   if (!room) return undefined;
@@ -110,11 +137,18 @@ export const leaveRoom = (roomId: string, userId: string): Room | undefined => {
     return room;
   }
 
+  const wasHost = userId === room.hostId;
   room.users = room.users.filter((u) => u.id !== userId);
 
-  if (room.users.length === 0 || userId === room.hostId) {
+  // If no users left, delete the room
+  if (room.users.length === 0) {
     deleteRoom(roomId);
     return undefined;
+  }
+
+  // If the host left, transfer to the next user
+  if (wasHost) {
+    transferHost(roomId);
   }
 
   return room;

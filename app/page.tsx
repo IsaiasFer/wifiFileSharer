@@ -39,6 +39,36 @@ export default function Home() {
 
     socketInstance.on("connect", () => {
       console.log("Connected:", socketInstance.id);
+      
+      // Try to reconnect to a previous session
+      const savedRoomId = localStorage.getItem("wifi_sharer_room_id");
+      const savedNickname = localStorage.getItem("wifi_sharer_nickname");
+      const savedPassword = localStorage.getItem("wifi_sharer_room_password");
+
+      if (savedRoomId && savedNickname) {
+        console.log("Attempting to reconnect to room:", savedRoomId);
+        socketInstance.emit("reconnect_to_room", {
+          roomId: savedRoomId,
+          nickname: savedNickname,
+          password: savedPassword || ""
+        }, (response: any) => {
+          if (response.success && response.room) {
+            console.log("Successfully reconnected to room");
+            setRoom(response.room);
+            setCurrentView("room");
+          } else {
+            console.log("Failed to reconnect:", response.error);
+            // Clear session data on failed reconnection
+            localStorage.removeItem("wifi_sharer_room_id");
+            localStorage.removeItem("wifi_sharer_room_password");
+            
+            // Show error message if it's not just "room not found" (which is normal after some time)
+            if (response.error && response.error !== "Sala no encontrada") {
+              showModal("Error de Reconexión", response.error, "warning");
+            }
+          }
+        });
+      }
     });
 
     socketInstance.on("admin_status", ({ isAdmin: admin }) => {
@@ -54,18 +84,27 @@ export default function Home() {
       setRoom(null);
       setCurrentView("home");
       setIsGhost(false);
+      // Clear session data
+      localStorage.removeItem("wifi_sharer_room_id");
+      localStorage.removeItem("wifi_sharer_room_password");
       showModal("Sala Cerrada", "La sala ha sido cerrada y todos los archivos han sido eliminados.", "warning");
     });
 
     socketInstance.on("you_were_kicked", () => {
       setRoom(null);
       setCurrentView("home");
+      // Clear session data
+      localStorage.removeItem("wifi_sharer_room_id");
+      localStorage.removeItem("wifi_sharer_room_password");
       showModal("Fuiste Expulsado", "El anfitrión te ha expulsado de la sala.", "warning");
     });
 
     socketInstance.on("you_were_banned", () => {
       setRoom(null);
       setCurrentView("home");
+      // Clear session data
+      localStorage.removeItem("wifi_sharer_room_id");
+      localStorage.removeItem("wifi_sharer_room_password");
       showModal("Has sido Bloqueado", "Has sido bloqueado de esta sala y no podrás volver a entrar.", "error");
     });
 

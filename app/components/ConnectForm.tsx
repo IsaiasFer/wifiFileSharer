@@ -49,6 +49,8 @@ export default function ConnectForm({ socket }: ConnectFormProps) {
           setError(response.error || "Error al unirse");
         } else {
           localStorage.setItem("wifi_sharer_nickname", nickname.trim());
+          localStorage.setItem("wifi_sharer_room_id", roomId);
+          localStorage.setItem("wifi_sharer_room_password", password || "");
         }
       });
     } else {
@@ -58,6 +60,8 @@ export default function ConnectForm({ socket }: ConnectFormProps) {
           setError(response.error || "Error al crear sala");
         } else {
           localStorage.setItem("wifi_sharer_nickname", nickname.trim());
+          localStorage.setItem("wifi_sharer_room_id", response.roomId);
+          localStorage.setItem("wifi_sharer_room_password", password || "");
         }
       });
     }

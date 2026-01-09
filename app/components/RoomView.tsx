@@ -58,21 +58,18 @@ export default function RoomView({ socket, room, currentUserId, isGhost = false 
   };
 
   const exitRoom = () => {
-    // Remove listener to allow exit without double warning
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
-    window.removeEventListener("beforeunload", handleBeforeUnload);
-    // Actually we need to make sure we don't trigger it. 
-    // Since we are adding it in useEffect, we can't easily remove the *specific* instance unless we store it in ref or define outside.
-    // However, window.location.reload() usually triggers it anyway.
-    // If we want to bypass it, we might need to rely on the user confirming the browser dialog too, 
-    // OR we can just accept that they verified our custom modal and now they face the browser one?
-    // User requested "mostrar advertencia... con estilos propios".
-    // If I do reload(), browser will ask AGAIN. 
-    // It's better to just do window.location.href = "/" (which also triggers it).
-    // Let's just do `window.location.reload()` and let the browser handle the final "are you sure".
-    // BUT the user specifically asked for "estilos propios".
-    // So my custom modal is the "estilos propios" layer. 
-    window.location.reload();
+    // Emit leave_room event to server
+    socket.emit("leave_room", { roomId: room.id }, (res: any) => {
+      if (res.success) {
+        // Clear session from localStorage
+        localStorage.removeItem("wifi_sharer_room_id");
+        localStorage.removeItem("wifi_sharer_room_password");
+        
+        // Remove beforeunload listener and navigate to home
+        window.removeEventListener("beforeunload", () => {});
+        window.location.href = "/";
+      }
+    });
   };
 
   const currentUser = room.users.find((u) => u.id === currentUserId);
