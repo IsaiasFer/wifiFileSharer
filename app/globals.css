@@ -556,3 +556,10 @@ html, body {
   animation: slideUp 0.3s ease-out;
 }
 
+/* ============ RECENT ROOMS ============ */
+.recent-room-btn:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: var(--primary) !important;
+  transform: translateX(4px);
+}
+

@@ -14,6 +14,7 @@ interface RoomViewProps {
   room: Room;
   currentUserId: string;
   isGhost?: boolean;
+  onRoomExited?: () => void;
 }
 
 // Clipboard fallback for HTTP
@@ -37,13 +38,14 @@ function copyToClipboard(text: string): Promise<void> {
   }
 }
 
-export default function RoomView({ socket, room, currentUserId, isGhost = false }: RoomViewProps) {
+export default function RoomView({ socket, room, currentUserId, isGhost = false, onRoomExited }: RoomViewProps) {
   const [activeTab, setActiveTab] = useState<"files" | "texts">("files");
   const [showParticipants, setShowParticipants] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [deleteModal, setDeleteModal] = useState<{ type: "file" | "text" | "exit"; id?: string; name?: string } | null>(null);
+  const [deleteModal, setDeleteModal] = useState<{ type: "file" | "text" | "exit" | "last_user_exit"; id?: string; name?: string } | null>(null);
 
-  // Warn on reload/close
+  // Warn only on tab close (not reload) - using beforeunload which triggers on both
+  // The browser will show its native dialog for tab close attempts
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
@@ -53,20 +55,32 @@ export default function RoomView({ socket, room, currentUserId, isGhost = false 
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, []);
 
+  const isLastUser = room.users.length === 1;
+
   const confirmExit = () => {
-    setDeleteModal({ type: "exit" });
+    if (isLastUser) {
+      // Show special dialog for last user
+      setDeleteModal({ type: "last_user_exit" });
+    } else {
+      setDeleteModal({ type: "exit" });
+    }
   };
 
-  const exitRoom = () => {
-    // Emit leave_room event to server
-    socket.emit("leave_room", { roomId: room.id }, (res: any) => {
+  const exitRoom = (keepRoomActive: boolean = false) => {
+    // Emit leave_room event to server with the keep_active option
+    socket.emit("leave_room", { roomId: room.id, keepActive: keepRoomActive }, (res: any) => {
       if (res.success) {
         // Clear session from localStorage
         localStorage.removeItem("wifi_sharer_room_id");
         localStorage.removeItem("wifi_sharer_room_password");
         
-        // Navigate to home (beforeunload will still trigger but that's ok)
-        window.location.href = "/";
+        // Use callback instead of page reload
+        if (onRoomExited) {
+          onRoomExited();
+        } else {
+          // Fallback to page reload if no callback provided
+          window.location.href = "/";
+        }
       }
     });
   };
@@ -370,7 +384,57 @@ export default function RoomView({ socket, room, currentUserId, isGhost = false 
       />
 
       {/* Delete/Exit Confirmation Modal */}
-      {deleteModal && (
+      {deleteModal && deleteModal.type === "last_user_exit" && (
+        <Modal
+          isOpen={true}
+          onClose={() => setDeleteModal(null)}
+          title="Eres el Último Usuario"
+          message="Eres la última persona en la sala. ¿Qué quieres hacer con la sala?"
+          type="confirm"
+          customActions={
+            <>
+              <button 
+                className="btn btn-ghost" 
+                onClick={() => setDeleteModal(null)} 
+                style={{ flex: 1, minWidth: "100px" }}
+              >
+                Cancelar
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  exitRoom(true); // Keep room active
+                  setDeleteModal(null);
+                }}
+                style={{ flex: 1, minWidth: "100px" }}
+              >
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ marginRight: "6px" }}>
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                  <polyline points="17 21 17 13 7 13 7 21" />
+                  <polyline points="7 3 7 8 15 8" />
+                </svg>
+                Mantener
+              </button>
+              <button
+                className="btn btn-danger"
+                onClick={() => {
+                  exitRoom(false); // Delete room
+                  setDeleteModal(null);
+                }}
+                style={{ flex: 1, minWidth: "100px" }}
+              >
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ marginRight: "6px" }}>
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+                Eliminar
+              </button>
+            </>
+          }
+        />
+      )}
+
+      {deleteModal && deleteModal.type !== "last_user_exit" && (
         <Modal
           isOpen={true}
           onClose={() => setDeleteModal(null)}
@@ -385,7 +449,7 @@ export default function RoomView({ socket, room, currentUserId, isGhost = false 
           type="confirm"
           confirmText={deleteModal.type === "exit" ? "Salir" : "Eliminar"}
           onConfirm={() => {
-            if (deleteModal.type === "exit") exitRoom();
+            if (deleteModal.type === "exit") exitRoom(false);
             else if (deleteModal.type === "file") handleDeleteFile(deleteModal.id!);
             else if (deleteModal.type === "text") handleDeleteText(deleteModal.id!);
           }}

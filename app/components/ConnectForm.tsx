@@ -6,9 +6,10 @@ import { FILE_SIZE_OPTIONS } from "@/lib/types";
 
 interface ConnectFormProps {
   socket: Socket;
+  onRoomJoined?: (roomId: string, password?: string) => void;
 }
 
-export default function ConnectForm({ socket }: ConnectFormProps) {
+export default function ConnectForm({ socket, onRoomJoined }: ConnectFormProps) {
   const [mode, setMode] = useState<"join" | "create">("join");
   const [nickname, setNickname] = useState("");
   const [roomId, setRoomId] = useState("");
@@ -51,6 +52,7 @@ export default function ConnectForm({ socket }: ConnectFormProps) {
           localStorage.setItem("wifi_sharer_nickname", nickname.trim());
           localStorage.setItem("wifi_sharer_room_id", roomId);
           localStorage.setItem("wifi_sharer_room_password", password || "");
+          onRoomJoined?.(roomId, password || undefined);
         }
       });
     } else {
@@ -62,6 +64,7 @@ export default function ConnectForm({ socket }: ConnectFormProps) {
           localStorage.setItem("wifi_sharer_nickname", nickname.trim());
           localStorage.setItem("wifi_sharer_room_id", response.roomId);
           localStorage.setItem("wifi_sharer_room_password", password || "");
+          onRoomJoined?.(response.roomId, password || undefined);
         }
       });
     }

@@ -228,8 +228,8 @@ const setupSocket = (io) => {
                 io.to(roomId).emit("room_updated", room);
         });
         // User voluntarily leaves room
-        socket.on("leave_room", ({ roomId }, callback) => {
-            const room = (0, rooms_1.leaveRoom)(roomId, socket.id);
+        socket.on("leave_room", ({ roomId, keepActive }, callback) => {
+            const room = (0, rooms_1.leaveRoom)(roomId, socket.id, keepActive === true);
             socket.leave(roomId);
             if (room) {
                 // Room still exists, notify other users
@@ -237,10 +237,15 @@ const setupSocket = (io) => {
                 callback({ success: true });
             }
             else {
-                // Room was deleted (no users left)
+                // Room was deleted (no users left and not kept active)
                 io.to(roomId).emit("room_closed");
                 callback({ success: true });
             }
+        });
+        // Check which rooms from a list still exist (for recent rooms feature)
+        socket.on("check_rooms_exist", ({ roomIds }, callback) => {
+            const activeRooms = (0, rooms_1.checkRoomsExist)(roomIds || []);
+            callback({ activeRooms });
         });
         // Reconnect to an existing room after page refresh
         socket.on("reconnect_to_room", ({ roomId, nickname, password }, callback) => {

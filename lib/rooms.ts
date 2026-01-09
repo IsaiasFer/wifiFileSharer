@@ -82,6 +82,11 @@ export const joinRoom = (roomId: string, user: User, password?: string): { succe
     room.users.push(user);
   }
 
+  // If room has no host (was left empty but kept active), make this user the host
+  if (!room.hostId || room.hostId === "") {
+    room.hostId = user.id;
+  }
+
   return { success: true };
 };
 
@@ -128,7 +133,7 @@ export const updateUserSocketId = (roomId: string, newSocketId: string, nickname
   return { success: true, room };
 };
 
-export const leaveRoom = (roomId: string, userId: string): Room | undefined => {
+export const leaveRoom = (roomId: string, userId: string, keepActive: boolean = false): Room | undefined => {
   const room = rooms.get(roomId);
   if (!room) return undefined;
 
@@ -142,10 +147,17 @@ export const leaveRoom = (roomId: string, userId: string): Room | undefined => {
   const wasHost = userId === room.hostId;
   room.users = room.users.filter((u) => u.id !== userId);
 
-  // If no users left, delete the room
+  // If no users left
   if (room.users.length === 0) {
-    deleteRoom(roomId);
-    return undefined;
+    if (keepActive) {
+      // Keep the room active without users - next person to join becomes host
+      room.hostId = ""; // Clear host - will be assigned to next person who joins
+      return room;
+    } else {
+      // Delete the room
+      deleteRoom(roomId);
+      return undefined;
+    }
   }
 
   // If the host left, transfer to the next user
@@ -154,6 +166,11 @@ export const leaveRoom = (roomId: string, userId: string): Room | undefined => {
   }
 
   return room;
+};
+
+// Check if rooms exist (for recent rooms feature)
+export const checkRoomsExist = (roomIds: string[]): string[] => {
+  return roomIds.filter(id => rooms.has(id));
 };
 
 // Kick user from room (host only)

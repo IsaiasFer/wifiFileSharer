@@ -1,5 +1,5 @@
 import { Server, Socket } from "socket.io";
-import { createRoom, joinRoom, joinRoomAsGhost, leaveRoom, addTextToRoom, getRoom, getAllRooms, kickUser, banUserIp, deleteRoom, removeFileFromRoom, removeTextFromRoom, updateUserSocketId } from "./rooms";
+import { createRoom, joinRoom, joinRoomAsGhost, leaveRoom, addTextToRoom, getRoom, getAllRooms, kickUser, banUserIp, deleteRoom, removeFileFromRoom, removeTextFromRoom, updateUserSocketId, checkRoomsExist } from "./rooms";
 import { User, SharedText, RoomSettings } from "./types";
 
 function parseUserAgent(ua: string): { os: string; browser: string } {
@@ -242,8 +242,8 @@ export const setupSocket = (io: Server) => {
     });
 
     // User voluntarily leaves room
-    socket.on("leave_room", ({ roomId }, callback) => {
-      const room = leaveRoom(roomId, socket.id);
+    socket.on("leave_room", ({ roomId, keepActive }, callback) => {
+      const room = leaveRoom(roomId, socket.id, keepActive === true);
       socket.leave(roomId);
       
       if (room) {
@@ -251,10 +251,16 @@ export const setupSocket = (io: Server) => {
         io.to(roomId).emit("room_updated", room);
         callback({ success: true });
       } else {
-        // Room was deleted (no users left)
+        // Room was deleted (no users left and not kept active)
         io.to(roomId).emit("room_closed");
         callback({ success: true });
       }
+    });
+
+    // Check which rooms from a list still exist (for recent rooms feature)
+    socket.on("check_rooms_exist", ({ roomIds }, callback) => {
+      const activeRooms = checkRoomsExist(roomIds || []);
+      callback({ activeRooms });
     });
 
     // Reconnect to an existing room after page refresh
