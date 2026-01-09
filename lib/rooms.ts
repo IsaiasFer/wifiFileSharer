@@ -108,13 +108,15 @@ export const transferHost = (roomId: string): boolean => {
   return true;
 };
 
-export const updateUserSocketId = (roomId: string, oldSocketId: string, newSocketId: string, nickname: string): { success: boolean; room?: Room; error?: string } => {
+export const updateUserSocketId = (roomId: string, newSocketId: string, nickname: string): { success: boolean; room?: Room; error?: string } => {
   const room = rooms.get(roomId);
   if (!room) return { success: false, error: "Sala no encontrada" };
 
   const userIndex = room.users.findIndex((u) => u.nickname === nickname);
   if (userIndex === -1) return { success: false, error: "Usuario no encontrado en la sala" };
 
+  const oldSocketId = room.users[userIndex].id;
+  
   // Update the socket ID
   room.users[userIndex].id = newSocketId;
   

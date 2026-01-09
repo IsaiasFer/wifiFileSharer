@@ -263,7 +263,7 @@ const setupSocket = (io) => {
             const existingUser = room.users.find((u) => u.nickname === nickname);
             if (existingUser) {
                 // User was in the room, update their socket ID
-                const result = (0, rooms_1.updateUserSocketId)(roomId, existingUser.id, socket.id, nickname);
+                const result = (0, rooms_1.updateUserSocketId)(roomId, socket.id, nickname);
                 if (result.success && result.room) {
                     socket.join(roomId);
                     callback({ success: true, room: result.room });

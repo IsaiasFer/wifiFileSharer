@@ -65,8 +65,7 @@ export default function RoomView({ socket, room, currentUserId, isGhost = false 
         localStorage.removeItem("wifi_sharer_room_id");
         localStorage.removeItem("wifi_sharer_room_password");
         
-        // Remove beforeunload listener and navigate to home
-        window.removeEventListener("beforeunload", () => {});
+        // Navigate to home (beforeunload will still trigger but that's ok)
         window.location.href = "/";
       }
     });

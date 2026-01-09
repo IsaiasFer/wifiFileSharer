@@ -283,7 +283,7 @@ export const setupSocket = (io: Server) => {
       
       if (existingUser) {
         // User was in the room, update their socket ID
-        const result = updateUserSocketId(roomId, existingUser.id, socket.id, nickname);
+        const result = updateUserSocketId(roomId, socket.id, nickname);
         
         if (result.success && result.room) {
           socket.join(roomId);

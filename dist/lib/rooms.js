@@ -105,13 +105,14 @@ const transferHost = (roomId) => {
     return true;
 };
 exports.transferHost = transferHost;
-const updateUserSocketId = (roomId, oldSocketId, newSocketId, nickname) => {
+const updateUserSocketId = (roomId, newSocketId, nickname) => {
     const room = rooms.get(roomId);
     if (!room)
         return { success: false, error: "Sala no encontrada" };
     const userIndex = room.users.findIndex((u) => u.nickname === nickname);
     if (userIndex === -1)
         return { success: false, error: "Usuario no encontrado en la sala" };
+    const oldSocketId = room.users[userIndex].id;
     // Update the socket ID
     room.users[userIndex].id = newSocketId;
     // If this user was the host, update host ID as well
