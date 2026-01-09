@@ -376,14 +376,14 @@ export default function RoomView({ socket, room, currentUserId, isGhost = false 
           isOpen={true}
           onClose={() => setDeleteModal(null)}
           title={
-            deleteModal.type === "exit" ? (isHost ? "Cerrar Sala" : "Salir de la Sala") :
+            deleteModal.type === "exit" ? "Salir de la Sala" :
               deleteModal.type === "file" ? "Eliminar Archivo" : "Eliminar Mensaje"
           }
           message={
-            deleteModal.type === "exit" ? (isHost ? "Si sales, la sala se cerrará para todos y los archivos se perderán. ¿Estás seguro?" : "¿Estás seguro de que quieres salir de la sala?") :
+            deleteModal.type === "exit" ? (isHost ? "Si sales, el rol de anfitrión se transferirá al siguiente usuario. ¿Estás seguro?" : "¿Estás seguro de que quieres salir de la sala?") :
               deleteModal.type === "file" ? `¿Estás seguro de que quieres eliminar el archivo "${deleteModal.name}"?` : "¿Estás seguro de que quieres eliminar este mensaje?"
           }
-          type={deleteModal.type === "exit" ? "warning" : "confirm"}
+          type="confirm"
           confirmText={deleteModal.type === "exit" ? "Salir" : "Eliminar"}
           onConfirm={() => {
             if (deleteModal.type === "exit") exitRoom();

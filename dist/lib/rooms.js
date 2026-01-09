@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.removeTextFromRoom = exports.removeFileFromRoom = exports.addTextToRoom = exports.addFileToRoom = exports.deleteRoom = exports.banUserIp = exports.kickUser = exports.leaveRoom = exports.joinRoomAsGhost = exports.joinRoom = exports.getAllRooms = exports.getRoom = exports.createRoom = void 0;
+exports.removeTextFromRoom = exports.removeFileFromRoom = exports.addTextToRoom = exports.addFileToRoom = exports.deleteRoom = exports.banUserIp = exports.kickUser = exports.leaveRoom = exports.updateUserSocketId = exports.transferHost = exports.joinRoomAsGhost = exports.joinRoom = exports.getAllRooms = exports.getRoom = exports.createRoom = void 0;
 const types_1 = require("./types");
 const fs_1 = __importDefault(require("fs"));
 // In-memory store
@@ -11,10 +11,24 @@ const rooms = new Map();
 const generateRoomId = () => {
     return Math.random().toString(36).substring(2, 6).toUpperCase();
 };
-const createRoom = (hostId, password, settings) => {
-    const id = generateRoomId();
-    if (rooms.has(id))
-        return (0, exports.createRoom)(hostId, password, settings);
+const createRoom = (hostId, password, settings, customId) => {
+    let id = generateRoomId();
+    if (customId) {
+        const cleanId = customId.trim().toUpperCase();
+        if (!/^[A-Z0-9]{1,10}$/.test(cleanId)) {
+            throw new Error("El nombre de la sala debe ser alfanumérico y de máximo 10 caracteres.");
+        }
+        if (rooms.has(cleanId)) {
+            throw new Error("El nombre de la sala ya está en uso.");
+        }
+        id = cleanId;
+    }
+    else {
+        // Ensure random ID uniqueness (though unlikely to collide)
+        while (rooms.has(id)) {
+            id = generateRoomId();
+        }
+    }
     const newRoom = {
         id,
         password,
@@ -82,6 +96,31 @@ const joinRoomAsGhost = (roomId, ghost) => {
     return { success: true, room };
 };
 exports.joinRoomAsGhost = joinRoomAsGhost;
+const transferHost = (roomId) => {
+    const room = rooms.get(roomId);
+    if (!room || room.users.length === 0)
+        return false;
+    // Transfer host to the first user in the list
+    room.hostId = room.users[0].id;
+    return true;
+};
+exports.transferHost = transferHost;
+const updateUserSocketId = (roomId, oldSocketId, newSocketId, nickname) => {
+    const room = rooms.get(roomId);
+    if (!room)
+        return { success: false, error: "Sala no encontrada" };
+    const userIndex = room.users.findIndex((u) => u.nickname === nickname);
+    if (userIndex === -1)
+        return { success: false, error: "Usuario no encontrado en la sala" };
+    // Update the socket ID
+    room.users[userIndex].id = newSocketId;
+    // If this user was the host, update host ID as well
+    if (room.hostId === oldSocketId) {
+        room.hostId = newSocketId;
+    }
+    return { success: true, room };
+};
+exports.updateUserSocketId = updateUserSocketId;
 const leaveRoom = (roomId, userId) => {
     const room = rooms.get(roomId);
     if (!room)
@@ -92,10 +131,16 @@ const leaveRoom = (roomId, userId) => {
         room.ghosts.splice(ghostIndex, 1);
         return room;
     }
+    const wasHost = userId === room.hostId;
     room.users = room.users.filter((u) => u.id !== userId);
-    if (room.users.length === 0 || userId === room.hostId) {
+    // If no users left, delete the room
+    if (room.users.length === 0) {
         (0, exports.deleteRoom)(roomId);
         return undefined;
+    }
+    // If the host left, transfer to the next user
+    if (wasHost) {
+        (0, exports.transferHost)(roomId);
     }
     return room;
 };
