@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, ReactNode } from "react";
 
 interface ModalProps {
   isOpen: boolean;
@@ -11,6 +11,7 @@ interface ModalProps {
   confirmText?: string;
   cancelText?: string;
   onConfirm?: () => void;
+  customActions?: ReactNode;
 }
 
 export default function Modal({
@@ -22,6 +23,7 @@ export default function Modal({
   confirmText = "Aceptar",
   cancelText = "Cancelar",
   onConfirm,
+  customActions,
 }: ModalProps) {
   const [visible, setVisible] = useState(false);
 
@@ -101,8 +103,10 @@ export default function Modal({
         <h3 style={{ fontSize: "1.25rem", fontWeight: 700, marginBottom: "0.5rem" }}>{title}</h3>
         <p className="text-muted" style={{ marginBottom: "1.5rem" }}>{message}</p>
 
-        <div className="flex gap-3" style={{ justifyContent: "center" }}>
-          {type === "confirm" && onConfirm ? (
+        <div className="flex gap-3" style={{ justifyContent: "center", flexWrap: "wrap" }}>
+          {customActions ? (
+            customActions
+          ) : type === "confirm" && onConfirm ? (
             <>
               <button className="btn btn-ghost" onClick={onClose} style={{ flex: 1 }}>
                 {cancelText}

@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.removeTextFromRoom = exports.removeFileFromRoom = exports.addTextToRoom = exports.addFileToRoom = exports.deleteRoom = exports.banUserIp = exports.kickUser = exports.leaveRoom = exports.updateUserSocketId = exports.transferHost = exports.joinRoomAsGhost = exports.joinRoom = exports.getAllRooms = exports.getRoom = exports.createRoom = void 0;
+exports.removeTextFromRoom = exports.removeFileFromRoom = exports.addTextToRoom = exports.addFileToRoom = exports.deleteRoom = exports.banUserIp = exports.kickUser = exports.checkRoomsExist = exports.leaveRoom = exports.updateUserSocketId = exports.transferHost = exports.joinRoomAsGhost = exports.joinRoom = exports.getAllRooms = exports.getRoom = exports.createRoom = void 0;
 const types_1 = require("./types");
 const fs_1 = __importDefault(require("fs"));
 // In-memory store
@@ -80,6 +80,10 @@ const joinRoom = (roomId, user, password) => {
     if (!existingUser) {
         room.users.push(user);
     }
+    // If room has no host (was left empty but kept active), make this user the host
+    if (!room.hostId) {
+        room.hostId = user.id;
+    }
     return { success: true };
 };
 exports.joinRoom = joinRoom;
@@ -122,7 +126,7 @@ const updateUserSocketId = (roomId, newSocketId, nickname) => {
     return { success: true, room };
 };
 exports.updateUserSocketId = updateUserSocketId;
-const leaveRoom = (roomId, userId) => {
+const leaveRoom = (roomId, userId, keepActive = false) => {
     const room = rooms.get(roomId);
     if (!room)
         return undefined;
@@ -134,10 +138,18 @@ const leaveRoom = (roomId, userId) => {
     }
     const wasHost = userId === room.hostId;
     room.users = room.users.filter((u) => u.id !== userId);
-    // If no users left, delete the room
+    // If no users left
     if (room.users.length === 0) {
-        (0, exports.deleteRoom)(roomId);
-        return undefined;
+        if (keepActive) {
+            // Keep the room active without users - next person to join becomes host
+            room.hostId = ""; // Clear host - will be assigned to next person who joins
+            return room;
+        }
+        else {
+            // Delete the room
+            (0, exports.deleteRoom)(roomId);
+            return undefined;
+        }
     }
     // If the host left, transfer to the next user
     if (wasHost) {
@@ -146,6 +158,11 @@ const leaveRoom = (roomId, userId) => {
     return room;
 };
 exports.leaveRoom = leaveRoom;
+// Check if rooms exist (for recent rooms feature)
+const checkRoomsExist = (roomIds) => {
+    return roomIds.filter(id => rooms.has(id));
+};
+exports.checkRoomsExist = checkRoomsExist;
 // Kick user from room (host only)
 const kickUser = (roomId, targetUserId) => {
     const room = rooms.get(roomId);
