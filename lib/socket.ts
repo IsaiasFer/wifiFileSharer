@@ -1,5 +1,5 @@
 import { Server, Socket } from "socket.io";
-import { createRoom, joinRoom, joinRoomAsGhost, leaveRoom, addTextToRoom, getRoom, getAllRooms, kickUser, banUserIp, deleteRoom, removeFileFromRoom, removeTextFromRoom } from "./rooms";
+import { createRoom, joinRoom, joinRoomAsGhost, leaveRoom, addTextToRoom, getRoom, getAllRooms, kickUser, banUserIp, deleteRoom, removeFileFromRoom, removeTextFromRoom, updateUserSocketId } from "./rooms";
 import { User, SharedText, RoomSettings } from "./types";
 
 function parseUserAgent(ua: string): { os: string; browser: string } {
@@ -239,6 +239,83 @@ export const setupSocket = (io: Server) => {
       io.to(roomId).emit("new_text", text);
       const room = getRoom(roomId);
       if (room) io.to(roomId).emit("room_updated", room);
+    });
+
+    // User voluntarily leaves room
+    socket.on("leave_room", ({ roomId }, callback) => {
+      const room = leaveRoom(roomId, socket.id);
+      socket.leave(roomId);
+      
+      if (room) {
+        // Room still exists, notify other users
+        io.to(roomId).emit("room_updated", room);
+        callback({ success: true });
+      } else {
+        // Room was deleted (no users left)
+        io.to(roomId).emit("room_closed");
+        callback({ success: true });
+      }
+    });
+
+    // Reconnect to an existing room after page refresh
+    socket.on("reconnect_to_room", ({ roomId, nickname, password }, callback) => {
+      const room = getRoom(roomId);
+      
+      if (!room) {
+        callback({ success: false, error: "Sala no encontrada" });
+        return;
+      }
+
+      // Check if IP is banned
+      if (room.bannedIps.includes(clientIp)) {
+        callback({ success: false, error: "Has sido bloqueado de esta sala" });
+        return;
+      }
+
+      // Verify password if room has one
+      if (room.password && room.password !== password) {
+        callback({ success: false, error: "Contraseña incorrecta" });
+        return;
+      }
+
+      // Check if user with this nickname exists in the room
+      const existingUser = room.users.find((u) => u.nickname === nickname);
+      
+      if (existingUser) {
+        // User was in the room, update their socket ID
+        const result = updateUserSocketId(roomId, socket.id, nickname);
+        
+        if (result.success && result.room) {
+          socket.join(roomId);
+          callback({ success: true, room: result.room });
+          io.to(roomId).emit("room_updated", result.room);
+        } else {
+          callback({ success: false, error: result.error || "Error al reconectar" });
+        }
+      } else {
+        // User was not in the room, treat as new join
+        const user: User = {
+          id: socket.id,
+          nickname,
+          roomId,
+          ip: clientIp,
+          userAgent,
+          os,
+          browser,
+          joinedAt: Date.now(),
+        };
+
+        const joinResult = joinRoom(roomId, user, password);
+
+        if (joinResult.success) {
+          socket.join(roomId);
+          const updatedRoom = getRoom(roomId);
+          callback({ success: true, room: updatedRoom });
+          io.to(roomId).emit("room_updated", updatedRoom);
+        } else {
+          callback({ success: false, error: joinResult.error });
+        }
+      }
     });
 
     socket.on("disconnecting", () => {

@@ -58,21 +58,17 @@ export default function RoomView({ socket, room, currentUserId, isGhost = false 
   };
 
   const exitRoom = () => {
-    // Remove listener to allow exit without double warning
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
-    window.removeEventListener("beforeunload", handleBeforeUnload);
-    // Actually we need to make sure we don't trigger it. 
-    // Since we are adding it in useEffect, we can't easily remove the *specific* instance unless we store it in ref or define outside.
-    // However, window.location.reload() usually triggers it anyway.
-    // If we want to bypass it, we might need to rely on the user confirming the browser dialog too, 
-    // OR we can just accept that they verified our custom modal and now they face the browser one?
-    // User requested "mostrar advertencia... con estilos propios".
-    // If I do reload(), browser will ask AGAIN. 
-    // It's better to just do window.location.href = "/" (which also triggers it).
-    // Let's just do `window.location.reload()` and let the browser handle the final "are you sure".
-    // BUT the user specifically asked for "estilos propios".
-    // So my custom modal is the "estilos propios" layer. 
-    window.location.reload();
+    // Emit leave_room event to server
+    socket.emit("leave_room", { roomId: room.id }, (res: any) => {
+      if (res.success) {
+        // Clear session from localStorage
+        localStorage.removeItem("wifi_sharer_room_id");
+        localStorage.removeItem("wifi_sharer_room_password");
+        
+        // Navigate to home (beforeunload will still trigger but that's ok)
+        window.location.href = "/";
+      }
+    });
   };
 
   const currentUser = room.users.find((u) => u.id === currentUserId);
@@ -379,14 +375,14 @@ export default function RoomView({ socket, room, currentUserId, isGhost = false 
           isOpen={true}
           onClose={() => setDeleteModal(null)}
           title={
-            deleteModal.type === "exit" ? (isHost ? "Cerrar Sala" : "Salir de la Sala") :
+            deleteModal.type === "exit" ? "Salir de la Sala" :
               deleteModal.type === "file" ? "Eliminar Archivo" : "Eliminar Mensaje"
           }
           message={
-            deleteModal.type === "exit" ? (isHost ? "Si sales, la sala se cerrará para todos y los archivos se perderán. ¿Estás seguro?" : "¿Estás seguro de que quieres salir de la sala?") :
+            deleteModal.type === "exit" ? (isHost ? "Si sales, el rol de anfitrión se transferirá al siguiente usuario. ¿Estás seguro?" : "¿Estás seguro de que quieres salir de la sala?") :
               deleteModal.type === "file" ? `¿Estás seguro de que quieres eliminar el archivo "${deleteModal.name}"?` : "¿Estás seguro de que quieres eliminar este mensaje?"
           }
-          type={deleteModal.type === "exit" ? "warning" : "confirm"}
+          type="confirm"
           confirmText={deleteModal.type === "exit" ? "Salir" : "Eliminar"}
           onConfirm={() => {
             if (deleteModal.type === "exit") exitRoom();
