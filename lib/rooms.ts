@@ -83,7 +83,7 @@ export const joinRoom = (roomId: string, user: User, password?: string): { succe
   }
 
   // If room has no host (was left empty but kept active), make this user the host
-  if (!room.hostId || room.hostId === "") {
+  if (!room.hostId) {
     room.hostId = user.id;
   }
 

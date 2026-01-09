@@ -81,7 +81,7 @@ const joinRoom = (roomId, user, password) => {
         room.users.push(user);
     }
     // If room has no host (was left empty but kept active), make this user the host
-    if (!room.hostId || room.hostId === "") {
+    if (!room.hostId) {
         room.hostId = user.id;
     }
     return { success: true };
